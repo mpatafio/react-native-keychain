@@ -119,6 +119,8 @@ declare module 'react-native-keychain' {
     options?: Options
   ): Promise<null | BIOMETRY_TYPE>;
 
+  function areBiometricsChanged(service: string): Promise<boolean>;
+
   /** IOS ONLY */
 
   function requestSharedWebCredentials(): Promise<false | SharedWebCredentials>;

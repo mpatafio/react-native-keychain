@@ -1,6 +1,7 @@
 package com.oblador.keychain.decryptionHandler;
 
 import android.os.Looper;
+import android.security.keystore.UserNotAuthenticatedException;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -17,8 +18,11 @@ import com.oblador.keychain.cipherStorage.CipherStorage.DecryptionContext;
 import com.oblador.keychain.cipherStorage.CipherStorageBase;
 import com.oblador.keychain.exceptions.CryptoFailedException;
 
+import java.security.InvalidKeyException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+
+import javax.crypto.Cipher;
 
 public class DecryptionResultHandlerInteractiveBiometric extends BiometricPrompt.AuthenticationCallback implements DecryptionResultHandler {
   protected CipherStorage.DecryptionResult result;
@@ -89,14 +93,21 @@ public class DecryptionResultHandlerInteractiveBiometric extends BiometricPrompt
   @Override
   public void onAuthenticationSucceeded(@NonNull final BiometricPrompt.AuthenticationResult result) {
     try {
-      if (null == context) throw new NullPointerException("Decrypt context is not assigned yet.");
-
-      final CipherStorage.DecryptionResult decrypted = new CipherStorage.DecryptionResult(
-        storage.decryptBytes(context.key, context.username),
-        storage.decryptBytes(context.key, context.password)
-      );
-
-      onDecrypt(decrypted, null);
+      if(result.getCryptoObject() != null){
+        // the user is trying to decrypt using a new key (bound to a biometric factor)
+        final CipherStorage.DecryptionResult decrypted = new CipherStorage.DecryptionResult(
+          new String(context.username),
+          new String(result.getCryptoObject().getCipher().doFinal(context.password))
+        );
+        onDecrypt(decrypted, null);
+      } else {
+        // the user is trying to decrypt using an old key (not bound to a biometric factor)
+        final CipherStorage.DecryptionResult decrypted = new CipherStorage.DecryptionResult(
+          storage.decryptBytes(context.key, context.username),
+          storage.decryptBytes(context.key, context.password)
+        );
+        onDecrypt(decrypted, null);
+      }
     } catch (Throwable fail) {
       onDecrypt(null, fail);
     }
@@ -125,8 +136,22 @@ public class DecryptionResultHandlerInteractiveBiometric extends BiometricPrompt
 
   protected BiometricPrompt authenticateWithPrompt(@NonNull final FragmentActivity activity) {
     final BiometricPrompt prompt = new BiometricPrompt(activity, executor, this);
-    prompt.authenticate(this.promptInfo);
-
+    try {
+      this.storage.getCachedInstance().init(Cipher.DECRYPT_MODE, context.key);
+      prompt.authenticate(this.promptInfo, new BiometricPrompt.CryptoObject(this.storage.getCachedInstance()));
+    }
+    catch (final UserNotAuthenticatedException userNotAuthenticatedException){
+      Log.i(LOG_TAG, "User not authenticated, the user is likely migrating from an old key.");
+      prompt.authenticate(this.promptInfo);
+    }
+    catch (final InvalidKeyException invalidKeyException) {
+      Log.i(LOG_TAG, "Key has been invalidated.");
+      this.onDecrypt(null, invalidKeyException);
+    }
+    catch (final Throwable fail) {
+      // any other exception treated as a failure
+      this.onDecrypt(null, fail);
+    }
     return prompt;
   }
 

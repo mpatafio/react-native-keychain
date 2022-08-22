@@ -1,5 +1,7 @@
 package com.oblador.keychain.cipherStorage;
 
+import android.security.keystore.KeyPermanentlyInvalidatedException;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
@@ -96,7 +98,7 @@ public interface CipherStorage {
                            @NonNull final byte[] username,
                            @NonNull final byte[] password,
                            @NonNull final SecurityLevel level)
-    throws CryptoFailedException;
+    throws CryptoFailedException, KeyPermanentlyInvalidatedException;
 
   /** Decrypt the credentials but redirect results of operation to handler. */
   void decrypt(@NonNull final DecryptionResultHandler handler,
@@ -142,6 +144,10 @@ public interface CipherStorage {
    * minSupportedApiLevel()
    */
   int getCapabilityLevel();
+
+  /** False if the key for the given alias has been invalidated, otherwise true */
+  boolean isKeyValidForDecryption(@NonNull final String alias);
+
 
   /** Get default name for alias/service. */
   String getDefaultAliasServiceName();

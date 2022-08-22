@@ -303,6 +303,24 @@ SecAccessControlCreateFlags accessControlValue(NSDictionary *options)
   return services;
 }
 
+- (void)savePolicyDomainState {
+  LAContext *context = [LAContext new];
+  NSError *err = nil;
+  [context canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:&err];
+  // in case of success, update the stored state
+  if (!err) {
+    [[NSUserDefaults standardUserDefaults] setObject:[context evaluatedPolicyDomainState] forKey:@"BiometricsPolicyDomainState"];
+  }
+  // in case of error (e.g. no biometrics enrolled), delete the stored state
+  else{
+      [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"BiometricsPolicyDomainState"];
+  }
+}
+
+- (id)getPolicyDomainState {
+    return [[NSUserDefaults standardUserDefaults] objectForKey:@"BiometricsPolicyDomainState"];
+}
+
 #pragma mark - RNKeychain
 
 #if TARGET_OS_IOS
@@ -362,6 +380,7 @@ RCT_EXPORT_METHOD(setGenericPasswordForOptions:(NSDictionary *)options
 
   [self deletePasswordsForService:service];
 
+  [self savePolicyDomainState];
   [self insertKeychainEntry:attributes withOptions:options resolver:resolve rejecter:reject];
 }
 
@@ -599,6 +618,23 @@ RCT_EXPORT_METHOD(getAllGenericPasswordServices:(RCTPromiseResolveBlock)resolve 
   } @catch (NSError *nsError) {
     return rejectWithError(reject, nsError);
   }
+}
+
+RCT_EXPORT_METHOD(areBiometricsChanged:(NSString *) unusedAlias resolver:(RCTPromiseResolveBlock)resolve
+    rejecter:(RCTPromiseRejectBlock)reject)
+{
+  LAContext *context = [LAContext new];
+    [context canEvaluatePolicy:LAPolicyDeviceOwnerAuthenticationWithBiometrics error:nil];
+
+  if (![self getPolicyDomainState]) {
+    return resolve(@(NO));
+  }
+  // If the policy domain state changed, send biometrics changed
+  if (![[context evaluatedPolicyDomainState] isEqual:[self getPolicyDomainState]]){
+    return resolve(@(YES));
+  }
+
+  return resolve(@(NO));
 }
 
 @end

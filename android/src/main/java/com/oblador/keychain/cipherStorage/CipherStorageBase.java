@@ -97,6 +97,12 @@ abstract public class CipherStorageBase implements CipherStorage {
         (getMinSupportedApiLevel()); // 19..29
   }
 
+  @Override
+  public boolean isKeyValidForDecryption(@NonNull final String alias) {
+    return true;
+  }
+
+
   /** Try device capabilities by creating temporary key in keystore. */
   @Override
   public boolean supportsSecureHardware() {

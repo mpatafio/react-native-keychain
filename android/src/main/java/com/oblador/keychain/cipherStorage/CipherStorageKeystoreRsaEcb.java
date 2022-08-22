@@ -1,9 +1,12 @@
 package com.oblador.keychain.cipherStorage;
 
+import static javax.crypto.Cipher.DECRYPT_MODE;
+
 import android.annotation.SuppressLint;
 import android.os.Build;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyInfo;
+import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.security.keystore.KeyProperties;
 import android.security.keystore.UserNotAuthenticatedException;
 import android.util.Log;
@@ -33,6 +36,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
 /** Fingerprint biometry protected storage. */
@@ -90,7 +94,7 @@ public class CipherStorageKeystoreRsaEcb extends CipherStorageBase {
                                   @NonNull byte[] username,
                                   @NonNull byte[] password,
                                   @NonNull final SecurityLevel level)
-    throws CryptoFailedException {
+    throws CryptoFailedException, KeyPermanentlyInvalidatedException {
 
     final DecryptionResultHandlerNonInteractive handler = new DecryptionResultHandlerNonInteractive();
     decrypt(handler, alias, username, password, level);
@@ -117,7 +121,6 @@ public class CipherStorageKeystoreRsaEcb extends CipherStorageBase {
 
     final String safeAlias = getDefaultAliasIfEmpty(alias, getDefaultAliasServiceName());
     final AtomicInteger retries = new AtomicInteger(1);
-    boolean shouldAskPermissions = false;
 
     Key key = null;
 
@@ -131,15 +134,20 @@ public class CipherStorageKeystoreRsaEcb extends CipherStorageBase {
       );
 
       handler.onDecrypt(results, null);
-    } catch (final UserNotAuthenticatedException ex) {
-      Log.d(LOG_TAG, "Unlock of keystore is needed. Error: " + ex.getMessage(), ex);
+    } catch (final Exception ex) {
+      if (ex.getCause() instanceof IllegalBlockSizeException || ex instanceof KeyPermanentlyInvalidatedException ||
+        ex instanceof UserNotAuthenticatedException) {
+        Log.d(LOG_TAG, "Unlock of keystore is needed. Error: " + ex.getMessage(), ex);
+        // expected that KEY instance is extracted and we caught exception on decryptBytes operation
+        @SuppressWarnings("ConstantConditions") final DecryptionContext context =
+          new DecryptionContext(safeAlias, key, password, username);
 
-      // expected that KEY instance is extracted and we caught exception on decryptBytes operation
-      @SuppressWarnings("ConstantConditions") final DecryptionContext context =
-        new DecryptionContext(safeAlias, key, password, username);
+        handler.askAccessPermissions(context);
+        return;
+      }
 
-      handler.askAccessPermissions(context);
-    } catch (final Throwable fail) {
+      handler.onDecrypt(null, ex);
+    }catch (final Throwable fail) {
       // any other exception treated as a failure
       handler.onDecrypt(null, fail);
     }
@@ -164,6 +172,19 @@ public class CipherStorageKeystoreRsaEcb extends CipherStorageBase {
   /** Biometry is supported. */
   @Override
   public boolean isBiometrySupported() {
+    return true;
+  }
+
+  @Override
+  public boolean isKeyValidForDecryption(@NonNull final String alias) {
+    try {
+      final String safeAlias = getDefaultAliasIfEmpty(alias, getDefaultAliasServiceName());
+      this.getCachedInstance().init(DECRYPT_MODE, extractGeneratedKey(safeAlias, SecurityLevel.SECURE_HARDWARE, new AtomicInteger(1)));
+    } catch (KeyPermanentlyInvalidatedException e) {
+      return false;
+    } catch (Throwable e) {
+      return true;
+    }
     return true;
   }
 
@@ -238,7 +259,6 @@ public class CipherStorageKeystoreRsaEcb extends CipherStorageBase {
       .setEncryptionPaddings(PADDING_PKCS1)
       .setRandomizedEncryptionRequired(true)
       .setUserAuthenticationRequired(true)
-      .setUserAuthenticationValidityDurationSeconds(5)
       .setKeySize(keySize);
   }
 

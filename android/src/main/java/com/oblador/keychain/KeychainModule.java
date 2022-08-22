@@ -1,6 +1,7 @@
 package com.oblador.keychain;
 
 import android.os.Build;
+import android.security.keystore.KeyPermanentlyInvalidatedException;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -102,6 +103,7 @@ public class KeychainModule extends ReactContextBaseJavaModule {
     String E_EMPTY_PARAMETERS = "E_EMPTY_PARAMETERS";
     String E_CRYPTO_FAILED = "E_CRYPTO_FAILED";
     String E_KEYSTORE_ACCESS_ERROR = "E_KEYSTORE_ACCESS_ERROR";
+    String E_KEY_PERMANENTLY_INVALIDATED = "E_KEY_PERMANENTLY_INVALIDATED";
     String E_SUPPORTED_BIOMETRY_ERROR = "E_SUPPORTED_BIOMETRY_ERROR";
     /** Raised for unexpected errors. */
     String E_UNKNOWN_ERROR = "E_UNKNOWN_ERROR";
@@ -219,6 +221,7 @@ public class KeychainModule extends ReactContextBaseJavaModule {
       final CipherStorage storage = getSelectedStorage(options);
 
       throwIfInsufficientLevel(storage, level);
+      resetGenericPassword(alias, promise);
 
       final EncryptionResult result = storage.encrypt(alias, username, password, level);
       prefsStorage.storeEncryptedEntry(alias, result);
@@ -320,6 +323,10 @@ public class KeychainModule extends ReactContextBaseJavaModule {
       Log.e(KEYCHAIN_MODULE, e.getMessage());
 
       promise.reject(Errors.E_CRYPTO_FAILED, e);
+    } catch (KeyPermanentlyInvalidatedException e) {
+      Log.e(KEYCHAIN_MODULE, e.getMessage());
+
+      promise.reject(Errors.E_KEY_PERMANENTLY_INVALIDATED, e);
     } catch (Throwable fail) {
       Log.e(KEYCHAIN_MODULE, fail.getMessage(), fail);
 
@@ -472,6 +479,13 @@ public class KeychainModule extends ReactContextBaseJavaModule {
       promise.reject(Errors.E_UNKNOWN_ERROR, fail);
     }
   }
+
+  @ReactMethod
+  public void areBiometricsChanged(@NonNull final String alias, @NonNull final Promise promise) {
+    final CipherStorageKeystoreRsaEcb cipher = (CipherStorageKeystoreRsaEcb) getCipherStorageByName(KnownCiphers.RSA);
+    promise.resolve(!cipher.isKeyValidForDecryption(alias));
+  }
+
 
   @ReactMethod
   public void getSecurityLevel(@Nullable final ReadableMap options,
@@ -638,7 +652,7 @@ public class KeychainModule extends ReactContextBaseJavaModule {
                                               @NonNull final ResultSet resultSet,
                                               @Rules @NonNull final String rules,
                                               @NonNull final PromptInfo promptInfo)
-    throws CryptoFailedException, KeyStoreAccessException {
+    throws CryptoFailedException, KeyStoreAccessException, KeyPermanentlyInvalidatedException {
     final String storageName = resultSet.cipherStorageName;
 
     // The encrypted data is encrypted using the current CipherStorage, so we just decrypt and return
@@ -674,7 +688,7 @@ public class KeychainModule extends ReactContextBaseJavaModule {
                                            @NonNull final CipherStorage storage,
                                            @NonNull final ResultSet resultSet,
                                            @NonNull final PromptInfo promptInfo)
-    throws CryptoFailedException {
+    throws CryptoFailedException, KeyPermanentlyInvalidatedException {
     final DecryptionResultHandler handler = getInteractiveHandler(storage, promptInfo);
     storage.decrypt(handler, alias, resultSet.username, resultSet.password, SecurityLevel.ANY);
 

@@ -339,6 +339,17 @@ export function setSharedWebCredentials(
 }
 
 /**
+ * Tells whether the current biometric set has been changed.
+ * @param {string} service the `service` name associated to the Cryptography Key.
+ * @return {Promise} Resolves to true when biometrics changed, otherwise false
+ */
+export function areBiometricsChanged(service: string): Promise<boolean> {
+  return RNKeychainManager.areBiometricsChanged(service);
+}
+
+
+
+/**
  * Inquire if the type of local authentication policy (LAPolicy) is supported
  * on this device with the device settings the user chose.
  * @param {object} options LAPolicy option, iOS only
@@ -380,6 +391,7 @@ export default {
   SECURITY_RULES,
   getSecurityLevel,
   canImplyAuthentication,
+  biometricsChanged,
   getSupportedBiometryType,
   setInternetCredentials,
   getInternetCredentials,

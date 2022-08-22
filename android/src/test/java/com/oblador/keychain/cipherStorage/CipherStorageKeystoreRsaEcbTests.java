@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.hardware.fingerprint.FingerprintManager;
 import android.os.Build;
+import android.security.keystore.KeyPermanentlyInvalidatedException;
 
 import androidx.biometric.BiometricManager;
 
@@ -30,12 +31,17 @@ import org.robolectric.annotation.Config;
 import java.security.Key;
 import java.security.Security;
 
+import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.robolectric.Shadows.shadowOf;
+import static javax.crypto.Cipher.DECRYPT_MODE;
 
 @RunWith(RobolectricTestRunner.class)
 public class CipherStorageKeystoreRsaEcbTests {
@@ -96,10 +102,25 @@ public class CipherStorageKeystoreRsaEcbTests {
     int result = BiometricManager.from(context).canAuthenticate();
     assertThat(result, is(BiometricManager.BIOMETRIC_SUCCESS));
 
-    final CipherStorage storage = new CipherStorageKeystoreAesCbc();;
+    final CipherStorage storage = new CipherStorageKeystoreRsaEcb();;
 
     // expected RsaEcb with fingerprint
     assertThat(storage.supportsSecureHardware(), is(true));
+  }
+
+  @Test
+  @Config(sdk = Build.VERSION_CODES.P)
+  public void testVerifyIsKeyValidForDecryption_api28() throws Exception {
+    //WHEN key is permanently invalidated
+    final Cipher mockedCipher = Mockito.mock(Cipher.class);
+    doThrow(new KeyPermanentlyInvalidatedException()).when(mockedCipher).init(eq(DECRYPT_MODE), any(Key.class));
+
+    final CipherStorageKeystoreRsaEcb storage = new CipherStorageKeystoreRsaEcb();
+    storage.setCipher(mockedCipher);
+
+
+    //THEN should return false
+    assertThat(storage.isKeyValidForDecryption("pwd"), is(false));
   }
 
 }
