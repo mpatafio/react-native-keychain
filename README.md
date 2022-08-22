@@ -26,6 +26,7 @@
     - [`setSharedWebCredentials(server, username, password)` (iOS only)](#setsharedwebcredentialsserver-username-password-ios-only)
     - [`canImplyAuthentication([{ authenticationType }])` (iOS only)](#canimplyauthentication-authenticationtype--ios-only)
     - [`getSupportedBiometryType()`](#getsupportedbiometrytype)
+    - [`areBiometricsChanged()`](#arebiometricschanged)
     - [`getSecurityLevel([{ accessControl }])` (Android only)](#getsecuritylevel-accesscontrol--android-only)
     - [Options](#options)
       - [Data Structure Properties/Fields](#data-structure-propertiesfields)
@@ -158,6 +159,14 @@ Inquire if the type of local authentication policy is supported on this device w
 **On Android:** Get what type of Class 3 (strong) biometry support the device has. Resolves to a `Keychain.BIOMETRY_TYPE` value when supported, otherwise `null`. In most devices this will return `FINGERPRINT` (except for Pixel 4 or similar where fingerprint sensor is not present).
 
 > This method returns `null`, if the device haven't enrolled into fingerprint/FaceId. Even though it has hardware for it.
+
+### `arebiometricschanged()`
+
+Ask the system whether the user's biometrics set have been changed or not.
+
+**On iOS:** It only works for items stored using access control `BIOMETRY_CURRENT_SET` . [As per documentation](https://developer.apple.com/documentation/security/secaccesscontrolcreateflags/2937192-biometrycurrentset) the key is invalidated either when the user adds or removes a biometric factor.
+
+**On Android:** [As per documentation](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder#setInvalidatedByBiometricEnrollment(boolean)) the key is invalidated either when the user adds a new biometric factor or when all the enrolled biometrics are removed.
 
 ### `getSecurityLevel([{ accessControl }])` (Android only)
 
