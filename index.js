@@ -347,8 +347,6 @@ export function areBiometricsChanged(service: string): Promise<boolean> {
   return RNKeychainManager.areBiometricsChanged(service);
 }
 
-
-
 /**
  * Inquire if the type of local authentication policy (LAPolicy) is supported
  * on this device with the device settings the user chose.

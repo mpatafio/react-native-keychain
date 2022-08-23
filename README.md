@@ -26,7 +26,7 @@
     - [`setSharedWebCredentials(server, username, password)` (iOS only)](#setsharedwebcredentialsserver-username-password-ios-only)
     - [`canImplyAuthentication([{ authenticationType }])` (iOS only)](#canimplyauthentication-authenticationtype--ios-only)
     - [`getSupportedBiometryType()`](#getsupportedbiometrytype)
-    - [`areBiometricsChanged()`](#arebiometricschanged)
+    - [`areBiometricsChanged(service)`](#arebiometricschanged)
     - [`getSecurityLevel([{ accessControl }])` (Android only)](#getsecuritylevel-accesscontrol--android-only)
     - [Options](#options)
       - [Data Structure Properties/Fields](#data-structure-propertiesfields)
@@ -160,13 +160,13 @@ Inquire if the type of local authentication policy is supported on this device w
 
 > This method returns `null`, if the device haven't enrolled into fingerprint/FaceId. Even though it has hardware for it.
 
-### `arebiometricschanged()`
+### `areBiometricsChanged(service)`
 
-Ask the system whether the user's biometrics set have been changed or not.
+Ask the system whether the user's biometric set has been changed.
 
-**On iOS:** It only works for items stored using access control `BIOMETRY_CURRENT_SET` . [As per documentation](https://developer.apple.com/documentation/security/secaccesscontrolcreateflags/2937192-biometrycurrentset) the key is invalidated either when the user adds or removes a biometric factor.
+**On iOS:** A "snapshot" of the current user's biometric set is taken at every `setGenericPassword` operation. When you call this function it compares the current biometrics set to the stored one. Don't use this function to make assumptions on cryptographic keys validity. It should be used in combination with items stored using access control `BIOMETRY_CURRENT_SET` . [As per documentation](https://developer.apple.com/documentation/security/secaccesscontrolcreateflags/2937192-biometrycurrentset) the key is invalidated either when the user adds or removes a biometric factor.
 
-**On Android:** [As per documentation](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder#setInvalidatedByBiometricEnrollment(boolean)) the key is invalidated either when the user adds a new biometric factor or when all the enrolled biometrics are removed.
+**On Android:** It can be used to make assumptions on the validity of the cryptographic key associated to the `service` passed as function argument. [As per documentation](https://developer.android.com/reference/android/security/keystore/KeyGenParameterSpec.Builder#setInvalidatedByBiometricEnrollment(boolean)) the key is invalidated either when the user adds a new biometric factor or when all the enrolled biometrics are removed.
 
 ### `getSecurityLevel([{ accessControl }])` (Android only)
 
@@ -291,7 +291,7 @@ As a rule the library will try to apply the best possible encryption for storing
 
 Q: What will happen if user disables/drops biometric usage?
 
-A: User will lose ability to extract secret from storage. On re-enable biometric access to the secret will be possible again.
+A: User will permanently lose ability to extract secret from storage.
 
 ---
 
@@ -313,6 +313,10 @@ Q: How to force a specific level of encryption during saving the secret?
 A: Do call `setGenericPassword({ ...otherProps, storage: "AES" })` with forced storage.
 
 > Note: attempt to force storage `RSA` when biometrics is not available will force code to reject call with errors specific to device biometric configuration state.
+
+### Rule 2: Android biometrics set
+
+Using `RSA` (Encryption with Biometrics) secrets generated for the service will be bound to the user's biometric set. It means they will be permanently invalidated when the user either adds a new biometric factor or removes all the enrolled ones.
 
 ## Manual Installation
 
