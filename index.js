@@ -389,7 +389,7 @@ export default {
   SECURITY_RULES,
   getSecurityLevel,
   canImplyAuthentication,
-  biometricsChanged,
+  areBiometricsChanged,
   getSupportedBiometryType,
   setInternetCredentials,
   getInternetCredentials,
