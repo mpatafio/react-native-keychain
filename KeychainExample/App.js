@@ -149,6 +149,14 @@ export default class KeychainExample extends Component {
     }
   }
 
+  async areBiometricsChanged() {
+    const changed = await Keychain.areBiometricsChanged();
+    Alert.alert(
+      'Biometrics',
+      `Your biometrics ${changed ? 'changed' : 'did not change'}`
+    );
+  }
+
   render() {
     const VALUES =
       Platform.OS === 'ios'
@@ -311,6 +319,16 @@ export default class KeychainExample extends Component {
                 </View>
               </TouchableHighlight>
             )}
+          </View>
+          <View style={styles.buttons}>
+            <TouchableHighlight
+              onPress={() => this.areBiometricsChanged()}
+              style={styles.button}
+            >
+              <View style={styles.load}>
+                <Text style={styles.buttonText}>Are Biometrics Changed</Text>
+              </View>
+            </TouchableHighlight>
           </View>
         </View>
       </KeyboardAvoidingView>

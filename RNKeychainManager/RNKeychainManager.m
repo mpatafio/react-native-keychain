@@ -620,7 +620,7 @@ RCT_EXPORT_METHOD(getAllGenericPasswordServices:(RCTPromiseResolveBlock)resolve 
   }
 }
 
-RCT_EXPORT_METHOD(areBiometricsChanged:(NSString *) unusedAlias resolver:(RCTPromiseResolveBlock)resolve
+RCT_EXPORT_METHOD(areBiometricsChanged:(NSString *) unusedService resolver:(RCTPromiseResolveBlock)resolve
     rejecter:(RCTPromiseRejectBlock)reject)
 {
   LAContext *context = [LAContext new];

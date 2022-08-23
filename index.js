@@ -292,7 +292,7 @@ export function getSupportedBiometryType(): Promise<null | SecBiometryType> {
   return RNKeychainManager.getSupportedBiometryType();
 }
 
-//* IOS ONLY */
+//* iOS ONLY */
 
 /**
  * Asks the user for a shared web credential.
@@ -340,10 +340,10 @@ export function setSharedWebCredentials(
 
 /**
  * Tells whether the current biometric set has been changed.
- * @param {string} service the `service` name associated to the Cryptography Key.
+ * @param {string} service the `service` name associated to the Cryptography secrets.
  * @return {Promise} Resolves to true when biometrics changed, otherwise false
  */
-export function areBiometricsChanged(service: string): Promise<boolean> {
+export function areBiometricsChanged(service?: string): Promise<boolean> {
   return RNKeychainManager.areBiometricsChanged(service);
 }
 
